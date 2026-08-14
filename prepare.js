@@ -3,6 +3,7 @@ const path = require('path');
 
 const base = 'https://aurelius-peptide.vercel.app';
 const out = path.join(__dirname, 'dist');
+
 const products = [
   'retatrutide.webp','tirzepatide.webp','semaglutide.webp','tesamorelin.webp','sermorelin.webp',
   'bpc157.webp','tb500.webp','ghkcu.webp','motsc.webp','igf1lr3.webp'
@@ -32,14 +33,25 @@ function buildCoaSection() {
 
   let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 
-  // Keep product titles as product names only. Correct dosage is shown visually inside the vial image area.
-  html = html.replace('.pic{height:225px;', '.pic{position:relative;height:225px;');
-  html = html.replace('.pic img{width:100%;height:100%;object-fit:cover}', '.pic img{width:100%;height:100%;object-fit:cover}.dose-fix{position:absolute;left:50%;top:63%;transform:translate(-50%,-50%);z-index:3;background:#f1f1f2;color:#15171b;font-size:14px;font-weight:700;line-height:1;padding:4px 9px;border-radius:2px;box-shadow:0 0 6px 5px rgba(241,241,242,.96);white-space:nowrap}');
+  // Product card titles: product name only, no mg specification.
+  const titleMap = [
+    ['Retatrutide','Retatrutide'],['Tirzepatide','Tirzepatide'],['Semaglutide','Semaglutide'],
+    ['Tesamorelin','Tesamorelin'],['Sermorelin','Sermorelin'],['BPC-157','BPC-157'],
+    ['TB-500','TB-500'],['GHK-Cu','GHK-Cu'],['MOTS-c','MOTS-c'],['IGF-1 LR3','IGF-1 LR3']
+  ];
+  for (const [name, clean] of titleMap) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    html = html.replace(new RegExp(`<h3>${escaped}(?:\\s+\\d+(?:\\.\\d+)?\\s*mg)?<\\/h3>`, 'gi'), `<h3>${clean}</h3>`);
+  }
 
-  html = html.replace('<img src="products/semaglutide.webp" alt="Semaglutide">', '<img src="products/semaglutide.webp" alt="Semaglutide"><span class="dose-fix">10 mg</span>');
-  html = html.replace('<img src="products/tesamorelin.webp" alt="Tesamorelin">', '<img src="products/tesamorelin.webp" alt="Tesamorelin"><span class="dose-fix">5 mg</span>');
-  html = html.replace('<img src="products/sermorelin.webp" alt="Sermorelin">', '<img src="products/sermorelin.webp" alt="Sermorelin"><span class="dose-fix">10 mg</span>');
-  html = html.replace('<img src="products/ghkcu.webp" alt="GHK-Cu">', '<img src="products/ghkcu.webp" alt="GHK-Cu"><span class="dose-fix">50 mg</span>');
+  // Hide the specification line printed inside all product vial images.
+  // This keeps the current product photography while showing only the product name on the vial.
+  if (!html.includes('.pic::after{content:"";')) {
+    html = html.replace(
+      '.pic{height:225px;background:linear-gradient(180deg,#f1f7ff,#fff);display:flex;align-items:center;justify-content:center;overflow:hidden}',
+      '.pic{height:225px;background:linear-gradient(180deg,#f1f7ff,#fff);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}.pic::after{content:"";position:absolute;left:34%;top:60.5%;width:32%;height:6.5%;background:linear-gradient(180deg,#f4f4f5,#f2f2f3);pointer-events:none;z-index:2}'
+    );
+  }
 
   html = html.replace('.coa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}', '.coa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}');
   html = html.replace('@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(2,1fr)}', '@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(3,1fr)}');
@@ -58,7 +70,7 @@ function buildCoaSection() {
   }
   await download(`${base}/facility-preview.mp4`, path.join(out, 'facility-preview.mp4'));
 
-  console.log('Aurelius product image dosage overlays and plain COA names prepared successfully.');
+  console.log('Aurelius product specifications hidden; product and COA names normalized.');
 })().catch(err => {
   console.error(err);
   process.exit(1);
