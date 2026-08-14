@@ -9,8 +9,8 @@ const products = [
 ];
 
 const coaNames = [
-  'Retatrutide','Tirzepatide','Semaglutide','Tesamorelin 5mg','Sermorelin',
-  'BPC-157','TB-500','GHK-Cu 50mg','MOTS-c','IGF-1 LR3'
+  'Retatrutide','Tirzepatide','Semaglutide','Tesamorelin','Sermorelin',
+  'BPC-157','TB-500','GHK-Cu','MOTS-c','IGF-1 LR3'
 ];
 
 async function download(url, dest) {
@@ -22,7 +22,7 @@ async function download(url, dest) {
 }
 
 function buildCoaSection() {
-  const cards = coaNames.map(name => `<div class="coa-card"><div class="coa-sheet"><div class="coa-top"><div class="coa-mark">COA</div><span class="coa-pill">REPORT PREVIEW</span></div><div class="coa-product"><strong>${name}</strong><span>Certificate of Analysis</span></div><div class="coa-lines"><div class="coa-line"></div><div class="coa-line"></div><div class="coa-line"></div><div class="coa-line"></div></div><div class="coa-status">Actual laboratory report will be displayed here. No test values are shown in this placeholder.</div></div><div class="coa-info"><strong>${name} COA</strong><span>Awaiting report</span></div></div>`).join('\n');
+  const cards = coaNames.map(name => `<div class="coa-card"><div class="coa-sheet"><div class="coa-top"><div class="coa-mark">COA</div><span class="coa-pill">REPORT PREVIEW</span></div><div class="coa-product"><strong>${name}</strong><span>Certificate of Analysis</span></div><div class="coa-lines"><div class="coa-line"></div><div class="coa-line"></div><div class="coa-line"></div><div class="coa-line"></div></div><div class="coa-status">Actual laboratory report will be displayed here. No test values are shown in this placeholder.</div></div><div class="coa-info"><strong>${name}</strong><span>Awaiting report</span></div></div>`).join('\n');
   return `<section id="coa" class="coa-section"><div class="wrap"><div class="section-head"><h2>Certificate of Analysis</h2><p>COA display aligned one-to-one with the featured product list.</p></div><div class="coa-grid">\n${cards}\n</div><div class="coa-note"><b>10 products · 10 COA slots.</b> Replace each placeholder with the corresponding third-party report when available.</div></div></section>\n`;
 }
 
@@ -32,8 +32,14 @@ function buildCoaSection() {
 
   let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 
-  html = html.replace('<h3>Tesamorelin</h3>', '<h3>Tesamorelin 5mg</h3>');
-  html = html.replace('<h3>GHK-Cu</h3>', '<h3>GHK-Cu 50mg</h3>');
+  // Keep product titles as product names only. Correct dosage is shown visually inside the vial image area.
+  html = html.replace('.pic{height:225px;', '.pic{position:relative;height:225px;');
+  html = html.replace('.pic img{width:100%;height:100%;object-fit:cover}', '.pic img{width:100%;height:100%;object-fit:cover}.dose-fix{position:absolute;left:50%;top:63%;transform:translate(-50%,-50%);z-index:3;background:#f1f1f2;color:#15171b;font-size:14px;font-weight:700;line-height:1;padding:4px 9px;border-radius:2px;box-shadow:0 0 6px 5px rgba(241,241,242,.96);white-space:nowrap}');
+
+  html = html.replace('<img src="products/semaglutide.webp" alt="Semaglutide">', '<img src="products/semaglutide.webp" alt="Semaglutide"><span class="dose-fix">10 mg</span>');
+  html = html.replace('<img src="products/tesamorelin.webp" alt="Tesamorelin">', '<img src="products/tesamorelin.webp" alt="Tesamorelin"><span class="dose-fix">5 mg</span>');
+  html = html.replace('<img src="products/sermorelin.webp" alt="Sermorelin">', '<img src="products/sermorelin.webp" alt="Sermorelin"><span class="dose-fix">10 mg</span>');
+  html = html.replace('<img src="products/ghkcu.webp" alt="GHK-Cu">', '<img src="products/ghkcu.webp" alt="GHK-Cu"><span class="dose-fix">50 mg</span>');
 
   html = html.replace('.coa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}', '.coa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}');
   html = html.replace('@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(2,1fr)}', '@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(3,1fr)}');
@@ -52,7 +58,7 @@ function buildCoaSection() {
   }
   await download(`${base}/facility-preview.mp4`, path.join(out, 'facility-preview.mp4'));
 
-  console.log('Aurelius assets and 10 matching COA slots prepared successfully.');
+  console.log('Aurelius product image dosage overlays and plain COA names prepared successfully.');
 })().catch(err => {
   console.error(err);
   process.exit(1);
