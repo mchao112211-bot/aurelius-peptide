@@ -9,8 +9,8 @@ const products = [
 ];
 
 const coaNames = [
-  'Retatrutide','Tirzepatide','Semaglutide','Tesamorelin','Sermorelin',
-  'BPC-157','TB-500','GHK-Cu','MOTS-c','IGF-1 LR3'
+  'Retatrutide','Tirzepatide','Semaglutide','Tesamorelin 5mg','Sermorelin',
+  'BPC-157','TB-500','GHK-Cu 50mg','MOTS-c','IGF-1 LR3'
 ];
 
 async function download(url, dest) {
@@ -31,6 +31,9 @@ function buildCoaSection() {
   fs.mkdirSync(out, { recursive: true });
 
   let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+
+  html = html.replace('<h3>Tesamorelin</h3>', '<h3>Tesamorelin 5mg</h3>');
+  html = html.replace('<h3>GHK-Cu</h3>', '<h3>GHK-Cu 50mg</h3>');
 
   html = html.replace('.coa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}', '.coa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}');
   html = html.replace('@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(2,1fr)}', '@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.coa-grid{grid-template-columns:repeat(3,1fr)}');
