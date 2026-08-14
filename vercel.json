@@ -1,4 +1,6 @@
 {
+  "buildCommand": "node prepare.js",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false
 }
