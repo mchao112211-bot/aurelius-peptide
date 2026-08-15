@@ -36,6 +36,8 @@ jobs:
           git config user.email "mchao112211@gmail.com"
           git add assets/factory.mp4
           git commit -m "Enhance factory video to 1080p" || exit 0
-          git push
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
 
-# Re-run requested 2026-08-15 for sharper website playback
+# Re-run requested 2026-08-15 with safe rebase before push
