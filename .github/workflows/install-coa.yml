@@ -1,0 +1,72 @@
+name: Install COA PDFs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'coa-upload/coa-bundle.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  install-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install COA PDFs
+        run: |
+          rm -rf coa
+          mkdir -p coa
+          unzip -o coa-upload/coa-bundle.zip -d coa
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('PDF Pending', 'View PDF')
+          p.write_text(s, encoding='utf-8')
+          PY
+          test -f coa/retatrutide.pdf
+          test -f coa/tirzepatide.pdf
+          test -f coa/semaglutide.pdf
+          test -f coa/tesamorelin.pdf
+          test -f coa/sermorelin.pdf
+          test -f coa/bpc-157.pdf
+          test -f coa/tb-500.pdf
+          test -f coa/ghk-cu.pdf
+          test -f coa/mots-c.pdf
+          test -f coa/ss-31.pdf
+
+      - name: Commit COA files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coa index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Install COA PDF files"
+            git push
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
