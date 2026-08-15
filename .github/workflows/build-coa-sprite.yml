@@ -1,0 +1,33 @@
+name: Build COA Image Sprite
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.coa-sprite-upload/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Rebuild COA image sprite
+        run: |
+          mkdir -p assets/coa
+          cat .coa-sprite-upload/part-*.txt | base64 -d > assets/coa/coa-sprite.webp
+          test -s assets/coa/coa-sprite.webp
+          file assets/coa/coa-sprite.webp | grep -qi 'webp'
+          echo "COA sprite bytes: $(wc -c < assets/coa/coa-sprite.webp)"
+      - name: Commit sprite and remove temporary chunks
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r .coa-sprite-upload
+          git add assets/coa/coa-sprite.webp
+          git commit -m "Add COA image sprite"
+          git push origin main
