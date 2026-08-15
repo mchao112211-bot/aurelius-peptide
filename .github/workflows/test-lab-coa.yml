@@ -10,27 +10,42 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Freedom Diagnostics Retatrutide lookup
+      - name: Inspect Freedom Diagnostics lookup source and scripts
         shell: bash
         run: |
           set -euo pipefail
-          url='https://freedomdiagnosticstesting.com/search-for-your-coa-based-on-the-unique-accession-number/?code=2607010572'
-          curl -L --fail --silent --show-error "$url" -o /tmp/server.html
-          google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=15000 --dump-dom "$url" > /tmp/rendered.html 2>/tmp/chrome.err || true
+          url='https://freedomdiagnosticstesting.com/search-for-your-coa-based-on-the-unique-accession-number/'
+          curl -L --fail --silent --show-error "$url" -o /tmp/page.html
           python3 - <<'PY'
-          import re
+          import re, html
           from pathlib import Path
-          for label, path in [('server','/tmp/server.html'),('rendered','/tmp/rendered.html')]:
-              text=Path(path).read_text(errors='ignore') if Path(path).exists() else ''
-              print(f'--- {label} PDF candidates ---')
-              urls=[]
-              for m in re.finditer(r'''(?:href|src)=["']([^"']+)["']''', text, re.I):
-                  u=m.group(1)
-                  if '.pdf' in u.lower(): urls.append(u)
-              for u in dict.fromkeys(urls): print(u)
-              print(f'--- {label} relevant lines ---')
-              for line in text.splitlines():
-                  low=line.lower()
-                  if '2607010572' in low or 'bgsr2607010572' in low or 'open pdf' in low:
-                      print(line[:2000])
+          import urllib.request
+          text=Path('/tmp/page.html').read_text(errors='ignore')
+          print('PAGE LENGTH', len(text))
+          print('--- source lines mentioning ajax/rest/search/pdf/coa ---')
+          for line in text.splitlines():
+              low=line.lower()
+              if any(x in low for x in ['admin-ajax','wp-json','open pdf','accession','search code','coa','pdf']):
+                  if len(line) < 6000: print(line[:6000])
+          scripts=[]
+          for m in re.finditer(r'<script[^>]+src=["\']([^"\']+)["\']', text, re.I):
+              u=html.unescape(m.group(1))
+              if u.startswith('//'): u='https:'+u
+              elif u.startswith('/'): u='https://freedomdiagnosticstesting.com'+u
+              if u.startswith('http'): scripts.append(u)
+          print('--- scripts ---')
+          for u in scripts: print(u)
+          print('--- relevant external script snippets ---')
+          for u in scripts:
+              try:
+                  req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'})
+                  js=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','ignore')
+              except Exception as e:
+                  continue
+              low=js.lower()
+              if any(x in low for x in ['admin-ajax','accession','search code','open pdf','coa_lookup','coa-search','wp-json']):
+                  print('SCRIPT',u,'LEN',len(js))
+                  for line in js.splitlines():
+                      ll=line.lower()
+                      if any(x in ll for x in ['admin-ajax','accession','open pdf','coa_lookup','coa-search','wp-json']): print(line[:8000])
           PY
