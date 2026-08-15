@@ -20,11 +20,12 @@ jobs:
           cat assets/factory-hires/part*.txt | tr -d '\n\r ' | base64 -d > assets/factory-showcase.webp
           test $(stat -c%s assets/factory-showcase.webp) -gt 70000
           file assets/factory-showcase.webp | grep -q 'Web/P image'
-      - name: Commit factory image
+          sed -i 's/assets\/factory-showcase\.jpg/assets\/factory-showcase.webp/g' index.html
+      - name: Commit factory image and page
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/factory-showcase.webp
-          git commit -m "Publish sharp factory showcase image" || exit 0
+          git add assets/factory-showcase.webp index.html
+          git commit -m "Use sharp WebP factory image" || exit 0
           git pull --rebase origin main
           git push origin HEAD:main
