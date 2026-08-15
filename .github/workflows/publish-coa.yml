@@ -1,0 +1,72 @@
+name: Publish COA PDFs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'coa-upload/**'
+      - '.github/workflows/publish-coa.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild COA archive from uploaded parts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat \
+            coa-upload/part00 \
+            coa-upload/part01 \
+            coa-upload/part02 \
+            coa-upload/part03 \
+            coa-upload/part04 \
+            coa-upload/part05a \
+            coa-upload/part05b \
+            coa-upload/part06 \
+            coa-upload/part07 \
+            coa-upload/part08 \
+            coa-upload/part09 \
+            | tr -d '\n\r ' | base64 -d > /tmp/coa.zip
+          unzip -t /tmp/coa.zip
+          rm -rf /tmp/coa_extract
+          mkdir -p /tmp/coa_extract
+          unzip -q /tmp/coa.zip -d /tmp/coa_extract
+
+      - name: Validate and publish exactly ten PDFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find /tmp/coa_extract -type f -iname '*.pdf' | wc -l | tr -d ' ')
+          echo "PDF count: $count"
+          test "$count" = "10"
+          mkdir -p coa
+          rm -f coa/*.pdf
+          find /tmp/coa_extract -type f -iname '*.pdf' -exec cp {} coa/ \;
+          test -s coa/retatrutide.pdf
+          test -s coa/tirzepatide.pdf
+          test -s coa/semaglutide.pdf
+          test -s coa/tesamorelin.pdf
+          test -s coa/sermorelin.pdf
+          test -s coa/bpc-157.pdf
+          test -s coa/tb-500.pdf
+          test -s coa/ghk-cu.pdf
+          test -s coa/mots-c.pdf
+          test -s coa/ss-31.pdf
+          file coa/*.pdf
+
+      - name: Commit PDFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coa/*.pdf
+          git commit -m "Publish ten COA PDF certificates" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
