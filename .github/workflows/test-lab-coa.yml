@@ -10,24 +10,27 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Check available browser
-        run: |
-          which google-chrome || true
-          which chromium || true
-          which chromium-browser || true
-
       - name: Inspect Freedom Diagnostics Retatrutide lookup
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           url='https://freedomdiagnosticstesting.com/search-for-your-coa-based-on-the-unique-accession-number/?code=2607010572'
           curl -L --fail --silent --show-error "$url" -o /tmp/server.html
-          echo '--- server-side PDF candidates ---'
-          grep -Eio 'https?[^"<> ]+\.pdf[^"<> ]*|href=["'"'][^"'"']+\.pdf[^"'"']*["'"']' /tmp/server.html | head -20 || true
-          if command -v google-chrome >/dev/null 2>&1; then
-            google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "$url" > /tmp/rendered.html 2>/tmp/chrome.err || true
-            echo '--- rendered PDF candidates ---'
-            grep -Eio 'https?[^"<> ]+\.pdf[^"<> ]*|href=["'"'][^"'"']+\.pdf[^"'"']*["'"']' /tmp/rendered.html | head -20 || true
-            echo '--- rendered lines with Open PDF / accession ---'
-            grep -Ei 'Open PDF|2607010572|BGSR2607010572' /tmp/rendered.html | head -30 || true
-          fi
+          google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=15000 --dump-dom "$url" > /tmp/rendered.html 2>/tmp/chrome.err || true
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          for label, path in [('server','/tmp/server.html'),('rendered','/tmp/rendered.html')]:
+              text=Path(path).read_text(errors='ignore') if Path(path).exists() else ''
+              print(f'--- {label} PDF candidates ---')
+              urls=[]
+              for m in re.finditer(r'''(?:href|src)=["']([^"']+)["']''', text, re.I):
+                  u=m.group(1)
+                  if '.pdf' in u.lower(): urls.append(u)
+              for u in dict.fromkeys(urls): print(u)
+              print(f'--- {label} relevant lines ---')
+              for line in text.splitlines():
+                  low=line.lower()
+                  if '2607010572' in low or 'bgsr2607010572' in low or 'open pdf' in low:
+                      print(line[:2000])
+          PY
