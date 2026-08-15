@@ -1,4 +1,4 @@
-name: Swap Factory Photo
+name: Remove Factory Media Box
 
 on:
   push:
@@ -16,27 +16,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Replace broken factory image with JPG only
+      - name: Remove factory media box only
         shell: python
         run: |
           from pathlib import Path
+          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old = 'assets/factory-showcase.webp?v=factoryphoto1'
-          new = 'assets/factory-showcase.jpg?v=factoryphoto2'
-          assert s.count(old) == 1, f'expected one factory image reference, found {s.count(old)}'
           before_products = s.count('assets/products/')
           before_coa = s.count('/coa/')
-          s = s.replace(old, new)
+          old_grid = '.factory-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:38px;align-items:center}'
+          new_grid = '.factory-grid{display:block;max-width:760px;margin:0 auto}'
+          assert old_grid in s, 'factory grid css not found'
+          s = s.replace(old_grid, new_grid, 1)
+          s, n = re.subn(r'<div class="factory-media">.*?</div>', '', s, count=1, flags=re.S)
+          assert n == 1, f'expected one factory media block, removed {n}'
           assert s.count('assets/products/') == before_products
           assert s.count('/coa/') == before_coa
-          assert new in s
+          assert '<div class="factory-media">' not in s
           p.write_text(s, encoding='utf-8')
       - name: Commit only index.html
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --cached --exit-code && exit 0 || true
-          git commit -m "Use factory JPG in showcase"
+          git commit -m "Remove broken factory media box"
           git push origin main
