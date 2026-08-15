@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'assets/factory-data/**'
+      - 'assets/factory-hires/**'
       - '.github/workflows/assemble-factory-image.yml'
 
 permissions:
@@ -15,16 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble high-resolution factory photo
+      - name: Assemble sharp factory image
         run: |
-          cat assets/factory-data/part*.txt | tr -d '\n\r ' | base64 -d > assets/factory-showcase.jpg
-          test $(stat -c%s assets/factory-showcase.jpg) -gt 50000
-          file assets/factory-showcase.jpg | grep -q 'JPEG image data'
-      - name: Commit factory photo
+          cat assets/factory-hires/part*.txt | tr -d '\n\r ' | base64 -d > assets/factory-showcase.webp
+          test $(stat -c%s assets/factory-showcase.webp) -gt 70000
+          file assets/factory-showcase.webp | grep -q 'Web/P image'
+      - name: Commit factory image
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/factory-showcase.jpg
-          git commit -m "Replace blurry factory image with high-resolution photo" || exit 0
+          git add assets/factory-showcase.webp
+          git commit -m "Publish sharp factory showcase image" || exit 0
           git pull --rebase origin main
           git push origin HEAD:main
