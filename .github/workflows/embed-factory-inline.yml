@@ -1,0 +1,46 @@
+name: Embed Factory Photo Inline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/embed-factory-inline.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Embed factory JPG directly in HTML only
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          photo = Path('assets/factory-showcase.jpg')
+          assert photo.exists(), 'factory-showcase.jpg missing'
+          data = base64.b64encode(photo.read_bytes()).decode('ascii')
+          old = 'src="assets/factory-showcase.jpg?v=factoryphoto3"'
+          if old not in s:
+              old = 'src="assets/factory-showcase.jpg?v=factoryphoto2"'
+          assert old in s, 'factory image src not found'
+          before_products = s.count('assets/products/')
+          before_coa = s.count('/coa/')
+          s = s.replace(old, f'src="data:image/jpeg;base64,{data}"', 1)
+          assert s.count('assets/products/') == before_products
+          assert s.count('/coa/') == before_coa
+          assert 'data:image/jpeg;base64,' in s
+          p.write_text(s, encoding='utf-8')
+      - name: Commit only index.html
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Embed factory photo directly in page"
+          git push origin main
