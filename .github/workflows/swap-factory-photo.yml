@@ -16,25 +16,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Replace factory video with existing factory photo only
+      - name: Replace broken factory image with JPG only
         shell: python
         run: |
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old_css = '.factory-media video{width:100%;height:100%;object-fit:contain;display:block;background:#071d39}'
-          new_css = '.factory-media img{width:100%;height:100%;object-fit:cover;display:block;background:#071d39}'
-          old_media = '<div class="factory-media"><video controls muted autoplay loop playsinline preload="metadata"><source src="assets/factory.mp4?v=restore2" type="video/mp4"></video></div>'
-          new_media = '<div class="factory-media"><img src="assets/factory-showcase.webp?v=factoryphoto1" alt="Factory cleanroom showcase"></div>'
-          assert s.count(old_css) == 1, f'expected one factory video CSS block, found {s.count(old_css)}'
-          assert s.count(old_media) == 1, f'expected one factory video block, found {s.count(old_media)}'
+          old = 'assets/factory-showcase.webp?v=factoryphoto1'
+          new = 'assets/factory-showcase.jpg?v=factoryphoto2'
+          assert s.count(old) == 1, f'expected one factory image reference, found {s.count(old)}'
           before_products = s.count('assets/products/')
           before_coa = s.count('/coa/')
-          s = s.replace(old_css, new_css).replace(old_media, new_media)
+          s = s.replace(old, new)
           assert s.count('assets/products/') == before_products
           assert s.count('/coa/') == before_coa
-          assert '<video' not in s
-          assert 'factory-showcase.webp?v=factoryphoto1' in s
+          assert new in s
           p.write_text(s, encoding='utf-8')
       - name: Commit only index.html
         run: |
@@ -42,5 +38,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git diff --cached --exit-code && exit 0 || true
-          git commit -m "Replace factory video with factory photo"
+          git commit -m "Use factory JPG in showcase"
           git push origin main
