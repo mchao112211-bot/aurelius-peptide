@@ -1,31 +1,36 @@
-name: Assemble Factory Image
+name: Update Factory Photo
 
 on:
   push:
     branches: [main]
     paths:
-      - 'assets/factory-hires/**'
       - '.github/workflows/assemble-factory-image.yml'
 
 permissions:
   contents: write
 
 jobs:
-  assemble:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble sharp factory image
+      - name: Use sharp 1600px factory photo
         run: |
-          cat assets/factory-hires/part*.txt | tr -d '\n\r ' | base64 -d > assets/factory-showcase.webp
-          test $(stat -c%s assets/factory-showcase.webp) -gt 70000
-          file assets/factory-showcase.webp | grep -q 'Web/P image'
-          sed -i 's/assets\/factory-showcase\.jpg/assets\/factory-showcase.webp/g' index.html
-      - name: Commit factory image and page
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          old = 'src="assets/factory-showcase.webp" alt="Facility showcase illustration"'
+          new = 'src="https://commons.wikimedia.org/wiki/Special:Redirect/file/Reinraum%20BBS%20Automation%20Blaichach.jpg?width=1600" alt="Facility showcase illustration"'
+          if old not in s:
+              raise SystemExit('factory image tag not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit only factory photo link
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/factory-showcase.webp index.html
-          git commit -m "Use sharp WebP factory image" || exit 0
+          git add index.html
+          git commit -m "Use sharp 1600px factory photo" || exit 0
           git pull --rebase origin main
           git push origin HEAD:main
