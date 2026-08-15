@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'coa-upload/**'
       - '.github/workflows/publish-coa.yml'
 
 permissions:
@@ -15,58 +14,80 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Rebuild COA archive from uploaded parts
+      - name: Download ten verified COAs from Freedom Diagnostics
         shell: bash
         run: |
           set -euo pipefail
-          cat \
-            coa-upload/part00 \
-            coa-upload/part01 \
-            coa-upload/part02 \
-            coa-upload/part03 \
-            coa-upload/part04 \
-            coa-upload/part05a \
-            coa-upload/part05b \
-            coa-upload/part06 \
-            coa-upload/part07 \
-            coa-upload/part08 \
-            coa-upload/part09 \
-            | tr -d '\n\r ' | base64 -d > /tmp/coa.zip
-          unzip -t /tmp/coa.zip
-          rm -rf /tmp/coa_extract
-          mkdir -p /tmp/coa_extract
-          unzip -q /tmp/coa.zip -d /tmp/coa_extract
+          python3 - <<'PY'
+          import json
+          import urllib.request
+          import urllib.parse
+          from pathlib import Path
 
-      - name: Validate and publish exactly ten PDFs
-        shell: bash
-        run: |
-          set -euo pipefail
-          count=$(find /tmp/coa_extract -type f -iname '*.pdf' | wc -l | tr -d ' ')
-          echo "PDF count: $count"
-          test "$count" = "10"
-          mkdir -p coa
-          rm -f coa/*.pdf
-          find /tmp/coa_extract -type f -iname '*.pdf' -exec cp {} coa/ \;
-          test -s coa/retatrutide.pdf
-          test -s coa/tirzepatide.pdf
-          test -s coa/semaglutide.pdf
-          test -s coa/tesamorelin.pdf
-          test -s coa/sermorelin.pdf
-          test -s coa/bpc-157.pdf
-          test -s coa/tb-500.pdf
-          test -s coa/ghk-cu.pdf
-          test -s coa/mots-c.pdf
-          test -s coa/ss-31.pdf
-          file coa/*.pdf
+          WORKER = 'https://coa-list.nameless-credit-789e.workers.dev/'
+          R2 = 'https://coas.freedomdiagnosticstesting.com'
+          reports = {
+              'retatrutide.pdf': ('2607010572', 'BGSR2607010572'),
+              'tirzepatide.pdf': ('2605150373', 'Amin2605150373'),
+              'semaglutide.pdf': ('2604210103', 'UNYX2604210103'),
+              'tesamorelin.pdf': ('2606110114', 'Well2606110114'),
+              'sermorelin.pdf': ('2607100476', 'Iron2607100476'),
+              'bpc-157.pdf': ('2602110138', 'Asce2602110138'),
+              'tb-500.pdf': ('2604210097', 'UNYX2604210097'),
+              'ghk-cu.pdf': ('2605210360', 'Affo2605210360'),
+              'mots-c.pdf': ('2605290585', 'UNYX2605290585'),
+              'ss-31.pdf': ('2607280237', 'NØXP2607280237'),
+          }
 
-      - name: Commit PDFs
+          def get(url):
+              req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0 COA verifier'})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return r.read()
+
+          data = json.loads(get(WORKER).decode('utf-8'))
+          files = data.get('files') or []
+          print('Official COA file list count:', len(files))
+          if not files:
+              raise SystemExit('Official COA file list is empty')
+
+          out = Path('coa')
+          out.mkdir(exist_ok=True)
+
+          for dest, (accession, expected) in reports.items():
+              exact = [f for f in files if f.casefold() == expected.casefold()]
+              suffix = [f for f in files if f.casefold().endswith(accession.casefold())]
+              if len(exact) == 1:
+                  code = exact[0]
+              elif len(suffix) == 1:
+                  code = suffix[0]
+              else:
+                  raise SystemExit(f'{dest}: expected one official match for {accession}, exact={exact}, suffix={suffix}')
+              url = R2 + '/' + urllib.parse.quote(code, safe='') + '.pdf'
+              body = get(url)
+              if not body.startswith(b'%PDF-'):
+                  raise SystemExit(f'{dest}: downloaded file is not PDF from {url}')
+              if len(body) < 10000:
+                  raise SystemExit(f'{dest}: official PDF unexpectedly small ({len(body)} bytes)')
+              (out / dest).write_bytes(body)
+              print(dest, '<-', code, len(body), 'bytes')
+
+          actual = sorted(p.name for p in out.glob('*.pdf'))
+          expected_names = sorted(reports)
+          if actual != expected_names:
+              raise SystemExit(f'Final PDF set mismatch: {actual}')
+          print('Validated all ten official PDFs.')
+          PY
+
+      - name: Commit official PDFs to site
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add coa/*.pdf
-          git commit -m "Publish ten COA PDF certificates" || exit 0
+          git commit -m "Publish ten verified Freedom Diagnostics COA PDFs" || exit 0
           git pull --rebase origin main
           git push origin HEAD:main
