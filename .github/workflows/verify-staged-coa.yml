@@ -1,0 +1,23 @@
+name: Verify staged COA bundle
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-staged-coa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild staged zip
+        run: |
+          cat coa-upload/part00 coa-upload/part01 coa-upload/part02 coa-upload/part03 coa-upload/part04 coa-upload/part05a coa-upload/part05b coa-upload/part06 coa-upload/part07 coa-upload/part08 coa-upload/part09 | tr -d '\r\n ' > /tmp/coa.b64
+          echo "base64 chars: $(wc -c < /tmp/coa.b64)"
+          base64 -d /tmp/coa.b64 > /tmp/coa.zip
+          echo "zip bytes: $(wc -c < /tmp/coa.zip)"
+          unzip -t /tmp/coa.zip
+          echo '---FILES---'
+          unzip -Z1 /tmp/coa.zip
