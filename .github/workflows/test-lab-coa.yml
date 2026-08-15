@@ -1,4 +1,4 @@
-name: Test Lab COA Fetch
+name: Verify Live COA PDFs
 
 on:
   push:
@@ -7,23 +7,20 @@ on:
       - '.github/workflows/test-lab-coa.yml'
 
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract Freedom Diagnostics lookup JavaScript
+      - name: Verify all ten PDFs on the live GitHub Pages site
         shell: bash
         run: |
           set -euo pipefail
-          url='https://freedomdiagnosticstesting.com/search-for-your-coa-based-on-the-unique-accession-number/'
-          curl -L --fail --silent --show-error "$url" -o /tmp/page.html
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('/tmp/page.html').read_text(errors='ignore')
-          start=text.find("const R2_BASE_URL")
-          end=text.find("document.getElementById('company-input').addEventListener", start)
-          if start < 0:
-              raise SystemExit('lookup JS not found')
-          if end < 0:
-              end=start+16000
-          print(text[start:end+1500])
-          PY
+          base='https://mchao112211-bot.github.io/aurelius-peptide/coa'
+          files=(retatrutide.pdf tirzepatide.pdf semaglutide.pdf tesamorelin.pdf sermorelin.pdf bpc-157.pdf tb-500.pdf ghk-cu.pdf mots-c.pdf ss-31.pdf)
+          for f in "${files[@]}"; do
+            echo "Checking $f"
+            curl -L --fail --retry 8 --retry-delay 3 --connect-timeout 10 --max-time 30 "$base/$f" -o "/tmp/$f"
+            test $(stat -c%s "/tmp/$f") -gt 10000
+            head -c 5 "/tmp/$f" | grep -q '%PDF-'
+            echo "OK $f $(stat -c%s "/tmp/$f") bytes"
+          done
+          echo 'ALL 10 LIVE COA PDFs VERIFIED'
