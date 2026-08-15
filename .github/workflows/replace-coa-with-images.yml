@@ -1,0 +1,75 @@
+name: Replace COA PDFs With Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/replace-coa-with-images.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Replace only COA display with image cards
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          before_products = s.count('assets/products/')
+          factory_start = s.index('<section id="factory">')
+          factory_end = s.index('</section>', factory_start) + len('</section>')
+          before_factory = s[factory_start:factory_end]
+
+          old_css = '.coa-card{background:#fff;border:1px solid #dae6f2;border-radius:15px;padding:16px;text-align:center}.pdf{width:52px;height:64px;margin:0 auto 12px;border:2px solid #d6e2ee;border-radius:7px;display:grid;place-items:center;color:#d63a3a;font-size:11px;font-weight:900;background:#fff}.coa-card h3{font-size:13px;margin:0}.coa-card p{font-size:9px;color:#8495a8;margin:5px 0 12px}.coa-btn{display:inline-flex;padding:9px 14px;border-radius:8px;background:#1681e6;color:#fff;font-size:10px;font-weight:900;box-shadow:0 5px 14px #1681e633}'
+          new_css = '.coa-card{background:#fff;border:1px solid #dae6f2;border-radius:15px;padding:12px;text-align:center;box-shadow:0 8px 20px #12365b0f}.coa-thumb{display:block;width:100%;aspect-ratio:3/4;object-fit:contain;border-radius:10px;border:1px solid #dce7f1;background:#fff;margin-bottom:10px}.coa-card h3{font-size:13px;margin:0}.coa-card p{font-size:9px;color:#8495a8;margin:5px 0 12px}.coa-btn{display:inline-flex;padding:9px 14px;border-radius:8px;background:#1681e6;color:#fff;font-size:10px;font-weight:900;box-shadow:0 5px 14px #1681e633}'
+          assert old_css in s, 'Expected current COA PDF CSS was not found'
+          s = s.replace(old_css, new_css, 1)
+
+          products = [
+              ('Retatrutide','retatrutide'),
+              ('Tirzepatide','tirzepatide'),
+              ('Semaglutide','semaglutide'),
+              ('Tesamorelin','tesamorelin'),
+              ('Sermorelin','sermorelin'),
+              ('BPC-157','bpc-157'),
+              ('TB-500','tb-500'),
+              ('GHK-Cu','ghk-cu'),
+              ('MOTS-c','mots-c'),
+              ('SS-31','ss-31'),
+          ]
+          cards = []
+          for name, slug in products:
+              url = f'assets/coa-images/{slug}.webp?v=coaimg1'
+              cards.append(f'<article class="coa-card"><a href="{url}" target="_blank" rel="noopener"><img class="coa-thumb" src="{url}" alt="{name} Certificate of Analysis"></a><h3>{name}</h3><p>Certificate of Analysis</p><a class="coa-btn" href="{url}" target="_blank" rel="noopener">VIEW IMAGE</a></article>')
+
+          new_section = '<section id="coa" class="coa-section"><div class="wrap"><div class="section-head"><div class="kicker">Quality Documents</div><h2>COA Verification</h2><p>Each certificate is shown directly as an image preview.</p></div><div class="coa-grid">\n' + '\n'.join(cards) + '\n</div></div></section>'
+          s, count = re.subn(r'<section id="coa" class="coa-section">.*?</section>', new_section, s, count=1, flags=re.S)
+          assert count == 1, f'COA section replacements: {count}'
+          assert s.count('assets/products/') == before_products, 'Product image references changed'
+          new_factory_start = s.index('<section id="factory">')
+          new_factory_end = s.index('</section>', new_factory_start) + len('</section>')
+          assert s[new_factory_start:new_factory_end] == before_factory, 'Factory section changed'
+          coa_start = s.index('<section id="coa"')
+          coa_end = s.index('</section>', coa_start)
+          coa = s[coa_start:coa_end]
+          assert '/coa/' not in coa, 'PDF links still present in COA section'
+          assert coa.count('assets/coa-images/') == 20, 'Expected 10 image previews and 10 image links'
+          assert 'Sermorelin Certificate of Analysis' in coa
+          p.write_text(s, encoding='utf-8')
+      - name: Commit only index.html
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --exit-code && exit 0 || true
+          git commit -m "Replace COA PDFs with image previews"
+          git push origin main
