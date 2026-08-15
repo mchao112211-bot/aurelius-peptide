@@ -1,0 +1,39 @@
+name: Enhance factory video
+
+on:
+  push:
+    paths:
+      - '.github/workflows/enhance-factory-video.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  enhance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+
+      - name: Enhance factory video to 1080p
+        run: |
+          ffmpeg -y -i assets/factory.mp4 \
+            -vf "hqdn3d=0.8:0.8:3.0:3.0,scale=1920:1080:flags=lanczos,unsharp=7:7:1.3:5:5:0.15,eq=contrast=1.08:brightness=0.015:saturation=1.05" \
+            -an -c:v libx264 -preset slow -crf 19 -profile:v high -level 4.1 \
+            -pix_fmt yuv420p -movflags +faststart assets/factory-hd.mp4
+          mv assets/factory-hd.mp4 assets/factory.mp4
+
+      - name: Commit enhanced video
+        run: |
+          git config user.name "mchao112211-bot"
+          git config user.email "mchao112211@gmail.com"
+          git add assets/factory.mp4
+          git commit -m "Enhance factory video to 1080p" || exit 0
+          git push
