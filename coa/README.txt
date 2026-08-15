@@ -1,0 +1,1 @@
+Place actual COA PDFs in /coa/ using these filenames: retatrutide.pdf, tirzepatide.pdf, semaglutide.pdf, tesamorelin.pdf, sermorelin.pdf, bpc-157.pdf, tb-500.pdf, ghk-cu.pdf, mots-c.pdf, ss-31.pdf
