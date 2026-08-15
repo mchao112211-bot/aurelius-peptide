@@ -1,0 +1,100 @@
+name: Assemble COA PDFs
+
+on:
+  push:
+    paths:
+      - 'coa-upload/**'
+      - '.github/workflows/assemble-coa-pdfs.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild COA archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/coa-extracted coa
+
+          cat \
+            coa-upload/part00 \
+            coa-upload/part01 \
+            coa-upload/part02 \
+            coa-upload/part03 \
+            coa-upload/part04 \
+            coa-upload/part05a \
+            coa-upload/part05b \
+            coa-upload/part06 \
+            coa-upload/part07 \
+            coa-upload/part08 \
+            coa-upload/part09 \
+            | tr -d '\r\n' | base64 --decode > /tmp/coa.zip
+
+          unzip -t /tmp/coa.zip
+          unzip -o /tmp/coa.zip -d /tmp/coa-extracted
+
+          copy_match() {
+            target="$1"
+            shift
+            src=""
+            for pattern in "$@"; do
+              src="$(find /tmp/coa-extracted -type f -iname "$pattern" | head -n 1 || true)"
+              [ -n "$src" ] && break
+            done
+            if [ -z "$src" ]; then
+              echo "Missing PDF for $target" >&2
+              find /tmp/coa-extracted -type f -maxdepth 4 -print >&2
+              exit 1
+            fi
+            cp "$src" "coa/$target"
+          }
+
+          copy_match retatrutide.pdf '*Retatrutide*.pdf' '*retatrutide*.pdf'
+          copy_match tirzepatide.pdf '*Tirzepatide*.pdf' '*tirzepatide*.pdf'
+          copy_match semaglutide.pdf '*Semaglutide*.pdf' '*semaglutide*.pdf'
+          copy_match tesamorelin.pdf '*Tesamorelin*.pdf' '*tesamorelin*.pdf'
+          copy_match sermorelin.pdf '*Sermorelin*.pdf' '*sermorelin*.pdf'
+          copy_match bpc-157.pdf '*BPC-157*.pdf' '*bpc*157*.pdf'
+          copy_match tb-500.pdf '*TB-500*.pdf' '*tb*500*.pdf'
+          copy_match ghk-cu.pdf '*GHK-Cu*.pdf' '*ghk*cu*.pdf'
+          copy_match mots-c.pdf '*MOTS-C*.pdf' '*mots*c*.pdf'
+          copy_match ss-31.pdf '*SS-31*.pdf' '*ss*31*.pdf'
+
+          test "$(find coa -maxdepth 1 -type f -name '*.pdf' | wc -l)" -eq 10
+          for f in coa/*.pdf; do
+            test -s "$f"
+            head -c 4 "$f" | grep -q '%PDF'
+          done
+
+      - name: Update COA buttons
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('PDF Pending</a>', 'View PDF</a>')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit real PDFs
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add coa/*.pdf index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+          else
+            git commit -m 'Add real COA PDF files'
+            git push origin HEAD:main
+          fi
