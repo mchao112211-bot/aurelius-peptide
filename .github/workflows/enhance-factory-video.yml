@@ -37,3 +37,5 @@ jobs:
           git add assets/factory.mp4
           git commit -m "Enhance factory video to 1080p" || exit 0
           git push
+
+# Re-run requested 2026-08-15 for sharper website playback
