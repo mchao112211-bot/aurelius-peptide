@@ -1,0 +1,33 @@
+name: Test Lab COA Fetch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-lab-coa.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check available browser
+        run: |
+          which google-chrome || true
+          which chromium || true
+          which chromium-browser || true
+
+      - name: Inspect Freedom Diagnostics Retatrutide lookup
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://freedomdiagnosticstesting.com/search-for-your-coa-based-on-the-unique-accession-number/?code=2607010572'
+          curl -L --fail --silent --show-error "$url" -o /tmp/server.html
+          echo '--- server-side PDF candidates ---'
+          grep -Eio 'https?[^"<> ]+\.pdf[^"<> ]*|href=["'"'][^"'"']+\.pdf[^"'"']*["'"']' /tmp/server.html | head -20 || true
+          if command -v google-chrome >/dev/null 2>&1; then
+            google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "$url" > /tmp/rendered.html 2>/tmp/chrome.err || true
+            echo '--- rendered PDF candidates ---'
+            grep -Eio 'https?[^"<> ]+\.pdf[^"<> ]*|href=["'"'][^"'"']+\.pdf[^"'"']*["'"']' /tmp/rendered.html | head -20 || true
+            echo '--- rendered lines with Open PDF / accession ---'
+            grep -Ei 'Open PDF|2607010572|BGSR2607010572' /tmp/rendered.html | head -30 || true
+          fi
