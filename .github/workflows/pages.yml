@@ -25,35 +25,6 @@ jobs:
         uses: actions/checkout@v6
       - name: Configure Pages
         uses: actions/configure-pages@v6
-      - name: Build factory showcase image
-        shell: bash
-        run: |
-          expected=(
-            a5d900f109c388949596573d835a1367534aa8a5f11f787f781fa73148f540c8
-            1530e02b0bfbd5500ede8bdd517e24a91982daea17cb9ce97a333e943a2c3396
-            cd6e5248fa3f51524175e53ec89a67234bd52953761b33b68e4eb9ef9cd83776
-            798fce16051f1791aeb793f2fc4c6e39f34047c0f65361e1beb17b86fc3f9d1d
-            002e3c868e4fd0b2d5e7d771630e1aee31ab3dcfa33e8bb701041174479f9c14
-            febda4df968c91ffb3ec5f532eb4ed7d895d8839ab23ce7281b37ea0a288be28
-            5011a90bfe12063e0bce0ae5aa0cbc28f484d920b8c1616b8fa43ee6f3c37e25
-            0d8c583a84b9f9b79749dfac6b334c3cf28a32038f59c78b4bd1d156568a49a0
-          )
-          for n in 00 01 02 03 04 05 06; do
-            idx=$((10#$n))
-            actual=$(head -c 20000 "assets/factory-final-data/part-${n}.txt" | sha256sum | awk '{print $1}')
-            echo "part-${n}: $actual expected ${expected[$idx]}"
-          done
-          actual=$(cat assets/factory-final-data/part-07.txt | sha256sum | awk '{print $1}')
-          echo "part-07: $actual expected ${expected[7]}"
-          {
-            for i in 00 01 02 03 04 05 06; do
-              head -c 20000 "assets/factory-final-data/part-${i}.txt"
-            done
-            cat assets/factory-final-data/part-07.txt
-          } | tr -d '\r\n' | base64 -d > assets/factory-showcase-final.webp
-          test "$(wc -c < assets/factory-showcase-final.webp)" -eq 105674
-          echo "a8d0ce254a00538a366c49f142b231346a25b3bfce9c6e4748abb2171fe7cfa9  assets/factory-showcase-final.webp" | sha256sum -c -
-          file assets/factory-showcase-final.webp
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
