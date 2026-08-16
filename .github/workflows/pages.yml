@@ -25,6 +25,18 @@ jobs:
         uses: actions/checkout@v6
       - name: Configure Pages
         uses: actions/configure-pages@v6
+      - name: Build factory showcase image
+        shell: bash
+        run: |
+          {
+            for i in 00 01 02 03 04 05 06; do
+              head -c 20000 "assets/factory-final-data/part-${i}.txt"
+            done
+            cat assets/factory-final-data/part-07.txt
+          } | tr -d '\r\n' | base64 -d > assets/factory-showcase-final.webp
+          test "$(wc -c < assets/factory-showcase-final.webp)" -eq 105674
+          echo "a8d0ce254a00538a366c49f142b231346a25b3bfce9c6e4748abb2171fe7cfa9  assets/factory-showcase-final.webp" | sha256sum -c -
+          file assets/factory-showcase-final.webp
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
