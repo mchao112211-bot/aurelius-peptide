@@ -49,7 +49,8 @@ let coaSprite='';
 function openCOA(i){if(!coaSprite)return;const el=document.getElementById('coaModalImage');el.style.backgroundImage=`url(${coaSprite})`;el.style.backgroundPosition=`${coaPositions[i][0]} ${coaPositions[i][1]}`;document.getElementById('coaModal').classList.add('open');document.getElementById('coaModal').setAttribute('aria-hidden','false')}
 function closeCOA(){document.getElementById('coaModal').classList.remove('open');document.getElementById('coaModal').setAttribute('aria-hidden','true')}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCOA()});
-(async()=>{try{const parts=await Promise.all([0,1].map(i=>fetch(`assets/factory-data/part-${String(i).padStart(2,'0')}.txt?v=factoryprofile1`).then(r=>{if(!r.ok)throw new Error('factory image');return r.text()})));const img=document.getElementById('factoryPromoImage');if(img)img.src='data:image/jpeg;base64,'+parts.join('')}catch(e){console.warn('Factory image unavailable')}})();
+
+(async()=>{try{const files=Array.from({length:10},(_,i)=>`assets/factory-hires/part${String(i+1).padStart(2,'0')}.txt?v=factoryhd3`);const parts=await Promise.all(files.map(u=>fetch(u).then(r=>{if(!r.ok)throw new Error('factory image');return r.text()})));const img=document.getElementById('factoryPromoImage');if(img)img.src='data:image/webp;base64,'+parts.join('')}catch(e){console.warn('Factory image unavailable')}})();
 </script>
 </body>
 </html>
