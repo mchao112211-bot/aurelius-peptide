@@ -1,0 +1,17 @@
+workflow_sha=a2ec482865f4d2241ae37806cd2657710ff9daa7
+git_head=a2ec482865f4d2241ae37806cd2657710ff9daa7
+pages_api_rc=0
+pages_status=building
+pages_cname=aaureliusa.com
+pages_html_url=https://aaureliusa.com/
+pages_build_type=legacy
+pages_https_enforced=True
+pages_pending_domain_unverified_at=None
+pages_source={"branch": "main", "path": "/"}
+runs_api_rc=1
+runs_api_err=gh: Not Found (HTTP 404) 
+live_status=200
+live_len=54440
+live_has_sales_team=True
+live_has_anna=True
+live_has_anna_whatsapp=True
