@@ -1,0 +1,42 @@
+name: Embed Anna Photo Once
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Install Anna embed patch workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Embed Anna photo into homepage
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          index = Path('index.html')
+          image = Path('assets/team/anna.webp')
+          html = index.read_text(encoding='utf-8')
+          old = 'src="assets/team/anna.webp?v=1"'
+          if old not in html:
+              raise SystemExit('Anna image path not found; refusing to modify homepage')
+          data = base64.b64encode(image.read_bytes()).decode('ascii')
+          html = html.replace(old, f'src="data:image/webp;base64,{data}"', 1)
+          index.write_text(html, encoding='utf-8')
+          PY
+      - name: Commit homepage
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Embed Anna photo in homepage"
+          git push origin main
