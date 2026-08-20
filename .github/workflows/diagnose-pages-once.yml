@@ -1,0 +1,77 @@
+name: Diagnose Pages Once
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  actions: read
+  pages: write
+
+jobs:
+  diagnose:
+    if: github.event.head_commit.message == 'Diagnose stuck Pages deploy'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Collect diagnostics
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, os, subprocess, urllib.request
+          repo=os.environ['GITHUB_REPOSITORY']
+          sha=os.environ['GITHUB_SHA']
+          def cmd(args):
+              p=subprocess.run(args,text=True,capture_output=True)
+              return p.returncode,p.stdout,p.stderr
+          out=[]
+          out.append(f'workflow_sha={sha}')
+          out.append(f'git_head={subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()}')
+          rc,s,e=cmd(['gh','api',f'repos/{repo}/pages'])
+          out.append(f'pages_api_rc={rc}')
+          if s:
+              try:
+                  j=json.loads(s)
+                  for k in ['status','cname','html_url','build_type','https_enforced','pending_domain_unverified_at']:
+                      out.append(f'pages_{k}={j.get(k)}')
+                  out.append('pages_source='+json.dumps(j.get('source'),sort_keys=True))
+              except Exception:
+                  out.append('pages_api_raw='+s[:2000].replace('\n',' '))
+          if e: out.append('pages_api_err='+e[:1000].replace('\n',' '))
+          rc,s,e=cmd(['gh','api',f'repos/{repo}/actions/runs','-f','per_page=20'])
+          out.append(f'runs_api_rc={rc}')
+          if s:
+              try:
+                  j=json.loads(s)
+                  for r in j.get('workflow_runs',[])[:20]:
+                      out.append('run='+json.dumps({k:r.get(k) for k in ['id','name','event','status','conclusion','head_sha','created_at','updated_at','html_url']},sort_keys=True))
+              except Exception:
+                  out.append('runs_api_raw='+s[:3000].replace('\n',' '))
+          if e: out.append('runs_api_err='+e[:1000].replace('\n',' '))
+          try:
+              req=urllib.request.Request('https://aaureliusa.com/?diag=pages-anna',headers={'User-Agent':'Mozilla/5.0'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  body=r.read().decode('utf-8','replace')
+                  out.append(f'live_status={r.status}')
+                  out.append(f'live_len={len(body)}')
+                  out.append(f'live_has_sales_team={"Sales Team" in body}')
+                  out.append(f'live_has_anna={">Anna<" in body}')
+                  out.append(f'live_has_anna_whatsapp={"85270599203" in body}')
+          except Exception as ex:
+              out.append('live_error='+repr(ex))
+          Path('pages-diagnostic.txt').write_text('\n'.join(out)+'\n',encoding='utf-8')
+          PY
+      - name: Save diagnostics
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pages-diagnostic.txt
+          git commit -m "Record Pages deployment diagnostics"
+          git push origin main
