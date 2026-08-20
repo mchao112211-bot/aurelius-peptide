@@ -1,0 +1,46 @@
+name: Add Amy sales contact
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Add Amy sales card
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          if 'WhatsApp: +852 6528 8684' not in html:
+              card = '''<article class="sales-card"><img class="sales-photo" src="assets/team/amy.webp?v=1" alt="Amy"><div class="sales-info"><h3>Amy</h3><p class="sales-role" data-i18n="salesRole">Sales Representative</p><p class="sales-phone">WhatsApp: +852 6528 8684</p><a class="whatsapp-btn" href="https://wa.me/85265288684" target="_blank" rel="noopener noreferrer" data-i18n="whatsappButton">CHAT ON WHATSAPP</a></div></article>'''
+              marker = '\n</div></div></section>\n</main>'
+              if marker not in html:
+                  raise SystemExit('Sales section marker not found')
+              html = html.replace(marker, '\n' + card + marker, 1)
+              path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Commit Amy update and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- index.html
+          git rm -- .github/workflows/add-amy-sales.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Add Amy sales contact and WhatsApp"
+          git push
